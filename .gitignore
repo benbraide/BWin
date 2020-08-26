@@ -37,3 +37,6 @@
 *.filters
 *.user
 *.sln
+/BWin/.vs/BWin
+/BWin/BWin/Debug
+/BWin/Debug
