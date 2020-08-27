@@ -6,48 +6,8 @@ namespace Win::Core::Property::Numeric{
 	template <class T>
 	class Number : public Container<T>{
 	public:
-		Number &operator =(__int16 value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(unsigned __int16 value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(__int32 value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(unsigned __int32 value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(__int64 value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(unsigned __int64 value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(float value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(double value){
-			this->SetValue_(static_cast<T>(value));
-			return *this;
-		}
-
-		Number &operator =(long double value){
-			this->SetValue_(static_cast<T>(value));
+		Number &operator =(T value){
+			Container<T>::operator =(value);
 			return *this;
 		}
 

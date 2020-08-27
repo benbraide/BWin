@@ -5,12 +5,30 @@
 namespace Win::Core::Traits{
 	struct NotAType;
 
+	template <class T, bool IsScalar>
+	struct Copy_{
+		using Type = T;
+	};
+
+	template <class T>
+	struct Copy_<T, false>{
+		using Type = const T &;
+	};
+
+	template <class T>
+	struct Copy{
+		using Type = typename Copy_<T, std::is_scalar_v<T>>::Type;
+	};
+
 	template <class ReturnT, class... ArgsT>
 	struct FunctionContainer{
 		using ReturnType = ReturnT;
 
 		using FunctionType = ReturnType(*)(ArgsT...);
 		using StdFunctionType = std::function<ReturnType(ArgsT...)>;
+
+		template <typename WithReturnT>
+		using StdFunctionTypeWith = std::function<WithReturnT(ArgsT...)>;
 
 		static const std::size_t ArgsCount = sizeof...(ArgsT);
 
@@ -276,18 +294,58 @@ namespace Win::Core::Traits{
 		}
 	};
 
-	template <class T, bool IsScalar>
-	struct Copy_{
-		using Type = T;
+	template <class ReturnT>
+	struct FunctionReturnCast{
+		template <class T, bool IsSameType>
+		struct Internal_;
+
+		template <class T>
+		struct Internal_<T, false>{
+			static typename Functor<T>::template StdFunctionTypeWith<ReturnT> Get(const T &object, typename Copy<ReturnT>::Type value){
+				return [=, callback = FunctionCast::Get(object)](auto... args){
+					callback(args...);
+					return value;
+				};
+			}
+		};
+
+		template <class T>
+		struct Internal_<T, true>{
+			static typename Functor<T>::template StdFunctionTypeWith<ReturnT> Get(const T &object, typename Copy<ReturnT>::Type value){
+				return FunctionCast::Get(object);
+			}
+		};
+
+		template <class T>
+		static auto Get(const T &object, typename Copy<ReturnT>::Type value = ReturnT()){
+			return Internal_<T, std::is_same_v<ReturnT, typename Functor<T>::ReturnType>>::template Get(object, value);
+		}
 	};
 
-	template <class T>
-	struct Copy_<T, false>{
-		using Type = const T &;
-	};
+	template <>
+	struct FunctionReturnCast<void>{
+		template <class T, bool IsSameType>
+		struct Internal_;
 
-	template <class T>
-	struct Copy{
-		using Type = typename Copy_<T, std::is_scalar_v<T>>::Type;
+		template <class T>
+		struct Internal_<T, false>{
+			static typename Functor<T>::template StdFunctionTypeWith<void> Get(const T &object){
+				return [=, callback = FunctionCast::Get(object)](auto... args){
+					callback(args...);
+				};
+			}
+		};
+
+		template <class T>
+		struct Internal_<T, true>{
+			static typename Functor<T>::template StdFunctionTypeWith<void> Get(const T &object){
+				return FunctionCast::Get(object);
+			}
+		};
+
+		template <class T>
+		static auto Get(const T &object){
+			return Internal_<T, std::is_same_v<void, typename Functor<T>::ReturnType>>::template Get(object);
+		}
 	};
 }

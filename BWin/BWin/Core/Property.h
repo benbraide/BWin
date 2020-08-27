@@ -173,8 +173,8 @@ namespace Win::Core::Property{
 		using BaseType = BaseT<T>;
 		using BaseType::operator =;
 
-		using SetterType = std::function<void(const T &)>;
-		using GetterType = std::function<const T &()>;
+		using SetterType = std::function<void(typename BaseType::CopyType)>;
+		using GetterType = std::function<typename BaseType::CopyType()>;
 
 		explicit External(const SetterType &setter, const GetterType &getter)
 			: setter_(setter), getter_(getter){}
