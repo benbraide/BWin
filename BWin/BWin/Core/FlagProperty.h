@@ -255,8 +255,8 @@ namespace Win::Core::Property::Flag{
 }
 
 namespace Win::Core::Property{
-	template <class T>
-	class External<T, Flag::Integral> : public Flag::Integral<T>{
+	template <class T, bool GetByValue>
+	class External<T, Flag::Integral, GetByValue> : public Flag::Integral<T>{
 	public:
 		using BaseType = Flag::Integral<T>;
 		using BaseType::operator =;

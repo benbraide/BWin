@@ -176,7 +176,7 @@ namespace Win::Core::Property{
 		using SetterType = std::function<void(typename BaseType::CopyType)>;
 		using GetterType = std::function<typename BaseType::CopyType()>;
 
-		explicit External(const SetterType &setter, const GetterType &getter)
+		External(const SetterType &setter, const GetterType &getter)
 			: setter_(setter), getter_(getter){}
 
 	protected:

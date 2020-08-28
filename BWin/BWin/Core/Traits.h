@@ -22,7 +22,11 @@ namespace Win::Core::Traits{
 
 	template <class ReturnT, class... ArgsT>
 	struct FunctionContainer{
+		template <typename... T>
+		struct ArgsPack_;
+
 		using ReturnType = ReturnT;
+		using ArgsPack = ArgsPack_<ArgsT...>;
 
 		using FunctionType = ReturnType(*)(ArgsT...);
 		using StdFunctionType = std::function<ReturnType(ArgsT...)>;
@@ -52,8 +56,8 @@ namespace Win::Core::Traits{
 	};
 
 	template <class T>
-	struct Function{
-		using BaseType = NotAType;
+	struct Function : FunctionContainer<NotAType>{
+		using BaseType = FunctionContainer<NotAType>;
 		using QualifiedType = T;
 
 		static const bool IsValid = false;
@@ -68,8 +72,8 @@ namespace Win::Core::Traits{
 	};
 
 	template<>
-	struct Function<void>{
-		using BaseType = NotAType;
+	struct Function<void> : public FunctionContainer<NotAType>{
+		using BaseType = FunctionContainer<NotAType>;
 		using QualifiedType = void;
 
 		static const bool IsValid = false;
