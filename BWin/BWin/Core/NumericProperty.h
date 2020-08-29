@@ -3,7 +3,7 @@
 #include "Property.h"
 
 namespace Win::Core::Property::Numeric{
-	template <class T, bool GetByValue = false>
+	template <class T>
 	class Number : public Container<T>{
 	public:
 		Number &operator =(T value){
@@ -1158,7 +1158,7 @@ namespace Win::Core::Property::Numeric{
 		}
 	};
 
-	template <class T, bool GetByValue = false>
+	template <class T>
 	class SignedNumber : public Number<T>{
 	public:
 		using Number<T>::operator =;
@@ -1168,7 +1168,7 @@ namespace Win::Core::Property::Numeric{
 		}
 	};
 
-	template <class T, bool GetByValue = false>
+	template <class T>
 	class Integer : public Number<T>{
 	public:
 		using Number<T>::operator =;
@@ -1653,7 +1653,7 @@ namespace Win::Core::Property::Numeric{
 		}
 	};
 
-	template <class T, bool GetByValue = false>
+	template <class T>
 	class SignedInteger : public Integer<T>{
 	public:
 		using Integer<T>::operator =;
@@ -1665,55 +1665,55 @@ namespace Win::Core::Property::Numeric{
 }
 
 namespace Win::Core::Property{
-	template <bool GetByValue>
+	template <>
 	class Object<__int16> : public Numeric::SignedInteger<__int16>{
 	public:
 		using SignedInteger<__int16>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<unsigned __int16> : public Numeric::Integer<unsigned __int16>{
 	public:
 		using Integer<unsigned __int16>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<__int32> : public Numeric::SignedInteger<__int32>{
 	public:
 		using SignedInteger<__int32>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<unsigned __int32> : public Numeric::Integer<unsigned __int32>{
 	public:
 		using Integer<unsigned __int32>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<__int64> : public Numeric::SignedInteger<__int64>{
 	public:
 		using SignedInteger<__int64>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<unsigned __int64> : public Numeric::Integer<unsigned __int64>{
 	public:
 		using Integer<unsigned __int64>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<float> : public Numeric::SignedNumber<float>{
 	public:
 		using SignedNumber<float>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<double> : public Numeric::SignedNumber<double>{
 	public:
 		using SignedNumber<double>::operator =;
 	};
 
-	template <bool GetByValue>
+	template <>
 	class Object<long double> : public Numeric::SignedNumber<long double>{
 	public:
 		using SignedNumber<long double>::operator =;

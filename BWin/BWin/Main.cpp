@@ -7,6 +7,8 @@
 #include "Core/ListProperty.h"
 #include "Core/UntypedProperty.h"
 
+#include "App.h"
+
 int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR cmd_line, int cmd_show){
 	auto f = []{};
 
@@ -18,7 +20,7 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR cmd_line, int cmd_sh
 	auto mf = Win::Core::Traits::FunctionCast::Get(wWinMain);
 	auto pmf = Win::Core::Traits::FunctionCast::Get(&wWinMain);
 
-	using t = Win::Core::Traits::Functor<decltype(f)>::FirstArgType;
+	using t = Win::Core::Traits::Functor<decltype(f)>::Args::FirstType;
 
 	Win::Core::Property::Value<int> ip;
 	Win::Core::Property::Value<int> sip;
@@ -51,6 +53,8 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR cmd_line, int cmd_sh
 	int lpf = lp.First;
 	int lpll = lp.Last;
 
+	lp.Item = std::make_pair<std::vector<int>::size_type, int>(14, 72);
+
 	Win::Core::Property::Untyped::Variant<int, float, double> vp;
 
 	vp = 9;
@@ -61,6 +65,16 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR cmd_line, int cmd_sh
 
 	vp = 36.9;
 	double dvp = vp;
+
+	vp = ip;
+
+	Win::Thread::Queue tq;
+	auto id = tq += []{};
+	tq -= id;
+	//tq -= ip;
+
+	Win::Thread::Queue &qn = Win::App::Thread->Queue;
+	Win::App::Thread->Queue += []{};
 
 	return 0;
 }

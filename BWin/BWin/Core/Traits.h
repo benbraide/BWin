@@ -20,39 +20,59 @@ namespace Win::Core::Traits{
 		using Type = typename Copy_<T, std::is_scalar_v<T>>::Type;
 	};
 
+	template <class... TList>
+	struct TypeList{
+		template <typename... T>
+		struct Pack_;
+
+		using Pack = Pack_<TList...>;
+
+		static const std::size_t Count = sizeof...(TList);
+
+		template <std::size_t Index, bool IsOutOfBounds>
+		struct At_{
+			using Type = typename std::tuple_element<Index, std::tuple<TList...>>::type;
+		};
+
+		template <std::size_t Index>
+		struct At_<Index, true>{
+			using Type = NotAType;
+		};
+
+		template <std::size_t Index>
+		struct At{
+			using Type = typename At_<Index, (Count <= Index)>::Type;
+		};
+
+		using FirstType = typename At<0>::Type;
+		using LastType = typename At<(Count - 1)>::Type;
+
+		template <class T, class... IndexTList>
+		struct IndexOf_;
+
+		template <class T, class... IndexTList>
+		struct IndexOf_<T, T, IndexTList...> : std::integral_constant<std::size_t, 0>{};
+
+		template <class T, class U, class... IndexTList>
+		struct IndexOf_<T, U, IndexTList...>
+			: std::integral_constant<std::size_t, (1 + IndexOf_<T, IndexTList...>::template value)>{};
+
+		template <class T>
+		struct IndexOf{
+			static constexpr std::size_t Value = IndexOf_<T, TList...>::template value;
+		};
+	};
+
 	template <class ReturnT, class... ArgsT>
 	struct FunctionContainer{
-		template <typename... T>
-		struct ArgsPack_;
-
 		using ReturnType = ReturnT;
-		using ArgsPack = ArgsPack_<ArgsT...>;
+		using Args = TypeList<ArgsT...>;
 
 		using FunctionType = ReturnType(*)(ArgsT...);
 		using StdFunctionType = std::function<ReturnType(ArgsT...)>;
 
 		template <typename WithReturnT>
 		using StdFunctionTypeWith = std::function<WithReturnT(ArgsT...)>;
-
-		static const std::size_t ArgsCount = sizeof...(ArgsT);
-
-		template <std::size_t Index, bool IsOutOfBounds>
-		struct Args_{
-			using Type = typename std::tuple_element<Index, std::tuple<ArgsT...>>::type;
-		};
-
-		template <std::size_t Index>
-		struct Args_<Index, true>{
-			using Type = NotAType;
-		};
-
-		template <std::size_t Index>
-		struct Args{
-			using Type = typename Args_<Index, (ArgsCount <= Index)>::Type;
-		};
-
-		using FirstArgType = typename Args<0>::Type;
-		using LastArgType = typename Args<(ArgsCount - 1)>::Type;
 	};
 
 	template <class T>
@@ -102,105 +122,9 @@ namespace Win::Core::Traits{
 	};
 
 	template<class ReturnT, class... ArgsT>
-	struct Function<ReturnT(__stdcall)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
-		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
-		using QualifiedType = ReturnT(__stdcall)(ArgsT...);
-
-		static const bool IsValid = true;
-		static const bool IsRaw = true;
-		static const bool IsStatic = true;
-		static const bool IsPointer = false;
-		static const bool IsConstant = false;
-
-		static auto Cast(QualifiedType object){
-			return static_cast<typename BaseType::StdFunctionType>(object);
-		}
-	};
-
-	template<class ReturnT, class... ArgsT>
-	struct Function<ReturnT(__fastcall)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
-		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
-		using QualifiedType = ReturnT(__fastcall)(ArgsT...);
-
-		static const bool IsValid = true;
-		static const bool IsRaw = true;
-		static const bool IsStatic = true;
-		static const bool IsPointer = false;
-		static const bool IsConstant = false;
-
-		static auto Cast(QualifiedType object){
-			return static_cast<typename BaseType::StdFunctionType>(object);
-		}
-	};
-
-	template<class ReturnT, class... ArgsT>
-	struct Function<ReturnT(__vectorcall)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
-		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
-		using QualifiedType = ReturnT(__vectorcall)(ArgsT...);
-
-		static const bool IsValid = true;
-		static const bool IsRaw = true;
-		static const bool IsStatic = true;
-		static const bool IsPointer = false;
-		static const bool IsConstant = false;
-
-		static auto Cast(QualifiedType object){
-			return static_cast<typename BaseType::StdFunctionType>(object);
-		}
-	};
-
-	template<class ReturnT, class... ArgsT>
 	struct Function<ReturnT(*)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
 		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
 		using QualifiedType = ReturnT(*)(ArgsT...);
-
-		static const bool IsValid = true;
-		static const bool IsRaw = true;
-		static const bool IsStatic = true;
-		static const bool IsPointer = true;
-		static const bool IsConstant = false;
-
-		static auto Cast(QualifiedType object){
-			return static_cast<typename BaseType::StdFunctionType>(object);
-		}
-	};
-
-	template<class ReturnT, class... ArgsT>
-	struct Function<ReturnT(__stdcall *)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
-		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
-		using QualifiedType = ReturnT(__stdcall *)(ArgsT...);
-
-		static const bool IsValid = true;
-		static const bool IsRaw = true;
-		static const bool IsStatic = true;
-		static const bool IsPointer = true;
-		static const bool IsConstant = false;
-
-		static auto Cast(QualifiedType object){
-			return static_cast<typename BaseType::StdFunctionType>(object);
-		}
-	};
-
-	template<class ReturnT, class... ArgsT>
-	struct Function<ReturnT(__fastcall *)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
-		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
-		using QualifiedType = ReturnT(__fastcall *)(ArgsT...);
-
-		static const bool IsValid = true;
-		static const bool IsRaw = true;
-		static const bool IsStatic = true;
-		static const bool IsPointer = true;
-		static const bool IsConstant = false;
-
-		static auto Cast(QualifiedType object){
-			return static_cast<typename BaseType::StdFunctionType>(object);
-		}
-	};
-
-	template<class ReturnT, class... ArgsT>
-	struct Function<ReturnT(__vectorcall *)(ArgsT...)> : FunctionContainer<ReturnT, ArgsT...>{
-		using BaseType = FunctionContainer<ReturnT, ArgsT...>;
-		using QualifiedType = ReturnT(__vectorcall *)(ArgsT...);
 
 		static const bool IsValid = true;
 		static const bool IsRaw = true;
@@ -268,19 +192,7 @@ namespace Win::Core::Traits{
 	struct Functor<ReturnT(ArgsT...)> : Function<ReturnT(ArgsT...)>{};
 
 	template <class ReturnT, class... ArgsT>
-	struct Functor<ReturnT(__stdcall)(ArgsT...)> : Function<ReturnT(__stdcall)(ArgsT...)>{};
-
-	template <class ReturnT, class... ArgsT>
 	struct Functor<ReturnT(*)(ArgsT...)> : Function<ReturnT(*)(ArgsT...)>{};
-
-	template <class ReturnT, class... ArgsT>
-	struct Functor<ReturnT(__stdcall *)(ArgsT...)> : Function<ReturnT(__stdcall *)(ArgsT...)>{};
-
-	template <class ReturnT, class... ArgsT>
-	struct Functor<ReturnT(__fastcall *)(ArgsT...)> : Function<ReturnT(__fastcall *)(ArgsT...)>{};
-
-	template <class ReturnT, class... ArgsT>
-	struct Functor<ReturnT(__vectorcall *)(ArgsT...)> : Function<ReturnT(__vectorcall *)(ArgsT...)>{};
 
 	template <class ReturnT, class... ArgsT>
 	struct Functor<std::function<ReturnT(ArgsT...)>> : Function<std::function<ReturnT(ArgsT...)>>{};

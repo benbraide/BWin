@@ -1,5 +1,7 @@
 #pragma once
 
+#include <memory>
+
 #include "NumericProperty.h"
 
 namespace Win::Core::Property{
@@ -18,7 +20,9 @@ namespace Win::Core::Property::List{
 	public:
 		using SizeType = typename T::size_type;
 		using ItemType = typename T::value_type;
+
 		using ItemPropertyType = Property::External<ItemType>;
+		using ItemInfoPropertyType = Property::External<std::pair<SizeType, ItemType>>;
 
 		using LengthPropertyType = Property::External<SizeType>;
 		using BooleanPropertyType = Property::External<bool>;
@@ -41,7 +45,8 @@ namespace Win::Core::Property::List{
 			CReverseBegin(nullptr, GetCReverseBeginGetter_(*this)),
 			CReverseEnd(nullptr, GetCReverseEndGetter_(*this)),
 			First(GetFirstSetter_(*this), GetFirstGetter_(*this)),
-			Last(GetLastSetter_(*this), GetLastGetter_(*this))
+			Last(GetLastSetter_(*this), GetLastGetter_(*this)),
+			Item(GetItemSetter_(*this), nullptr)
 		{}
 
 		Generic &operator =(typename Container<T>::CopyType) = delete;
@@ -54,6 +59,10 @@ namespace Win::Core::Property::List{
 		Generic &operator -=(typename Container<ItemType>::CopyType value){
 			Remove_(value);
 			return *this;
+		}
+
+		typename ItemType operator [](SizeType index) const{
+			return GetItemAt_(index);
 		}
 
 		LengthPropertyType Length;
@@ -74,6 +83,8 @@ namespace Win::Core::Property::List{
 		ItemPropertyType First;
 		ItemPropertyType Last;
 
+		ItemInfoPropertyType Item;
+
 	protected:
 		virtual void Insert_(typename Container<ItemType>::CopyType value){
 			this->GetValue_().push_back(value);
@@ -88,6 +99,12 @@ namespace Win::Core::Property::List{
 
 		virtual void Update_(SizeType index, typename Container<ItemType>::CopyType value){
 			*std::next(GetBegin_(), static_cast<typename IteratorPropertyType::ValueType::difference_type>(index)) = value;
+		}
+
+		virtual ItemType GetItemAt_(SizeType index) const{
+			if (index < GetLength_())
+				return *std::next(GetCBegin_(), index);
+			throw Exception::InvalidIndex();
 		}
 
 		virtual void SetLength_(SizeType value){
@@ -154,6 +171,16 @@ namespace Win::Core::Property::List{
 			if (GetLength_() == 0u)
 				throw Exception::InvalidIndex();
 			return *GetCReverseBegin_();
+		}
+
+		virtual void SetItemInfo_(typename ItemInfoPropertyType::CopyType value){
+			if (auto length = GetLength_(); length <= value.first){
+				if (length < value.first && value.first != static_cast<SizeType>(-1))
+					SetLength_(value.first);
+				Insert_(value.second);
+			}
+			else
+				Update_(value.first, value.second);
 		}
 
 		static typename LengthPropertyType::SetterType GetLengthSetter_(Generic &self){
@@ -243,6 +270,12 @@ namespace Win::Core::Property::List{
 		static typename ItemPropertyType::GetterType GetLastGetter_(Generic &self){
 			return [&]{
 				return self.GetLast_();
+			};
+		}
+
+		static typename ItemInfoPropertyType::SetterType GetItemSetter_(Generic &self){
+			return [&](typename ItemInfoPropertyType::CopyType value){
+				return self.SetItemInfo_(value);
 			};
 		}
 

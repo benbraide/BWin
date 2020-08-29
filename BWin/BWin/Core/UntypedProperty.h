@@ -64,9 +64,14 @@ namespace Win::Core::Property::Untyped{
 			: handlers_(std::move(handlers)){}
 
 		template <typename T>
-		Container &operator =(const T &value){
+		std::enable_if_t<!std::is_base_of_v<Property::Base, T>, Container> &operator =(const T &value){
 			dynamic_cast<TypedHandler<std::remove_reference_t<T>> *>(GetHandler_<T>().get())->SetValue(value);
 			return *this;
+		}
+
+		template <typename T>
+		Container &operator =(const Property::Container<T> &value){
+			return operator =(static_cast<T>(value));
 		}
 
 		template <typename T>

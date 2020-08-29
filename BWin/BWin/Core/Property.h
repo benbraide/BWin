@@ -23,11 +23,32 @@ namespace Win::Core::Property{
 		};
 	}
 
+	class Base{
+	public:
+		virtual ~Base() = default;
+	};
+
 	template <class T>
-	class Container{
+	class Container : public Base{
 	public:
 		using ValueType = T;
+		using PtrType = std::remove_reference_t<T> *;
+		using RefType = std::conditional_t<(!std::is_scalar_v<T> && (std::is_const_v<T> || !std::is_reference_v<T>)), T &, std::remove_reference_t<T> *>;
 		using CopyType = typename Traits::Copy<T>::Type;
+
+		template <bool IsRef>
+		struct Ref_{
+			static T &Get(Container &self){
+				return self.GetValue_();
+			}
+		};
+
+		template <>
+		struct Ref_<false>{
+			static std::remove_reference_t<T> *Get(Container &self){
+				return &self.GetValue_();
+			}
+		};
 
 		Container &operator =(CopyType value){
 			SetValue_(value);
@@ -41,6 +62,14 @@ namespace Win::Core::Property{
 
 		operator CopyType() const{
 			return GetValue_();
+		}
+
+		operator RefType(){
+			return Ref_<(!std::is_scalar_v<T> && (std::is_const_v<T> || !std::is_reference_v<T>))>::template Get(*this);
+		}
+
+		PtrType operator ->(){
+			return GetPtr_();
 		}
 
 		bool operator ==(CopyType other) const{
@@ -68,8 +97,22 @@ namespace Win::Core::Property{
 		}
 
 	protected:
+		template <bool IsCopyAssignable>
+		struct Copy_{
+			static void Do(Container &self, CopyType value){
+				self.GetValue_() = value;
+			}
+		};
+
+		template <>
+		struct Copy_<false>{
+			static void Do(Container &self, CopyType){
+				throw Exception::ReadOnly();
+			}
+		};
+
 		virtual void SetValue_(CopyType value){
-			GetValue_() = value;
+			Copy_<std::is_copy_assignable_v<T>>::template Do(*this, value);
 		}
 
 		virtual CopyType GetValue_() const{
@@ -78,6 +121,10 @@ namespace Win::Core::Property{
 
 		virtual T &GetValue_(){
 			throw Exception::ReadOnly();
+		}
+
+		virtual PtrType GetPtr_(){
+			return &GetValue_();
 		}
 	};
 
@@ -93,10 +140,6 @@ namespace Win::Core::Property{
 		using BaseType::operator =;
 
 	protected:
-		virtual void SetValue_(typename BaseType::CopyType value) override{
-			value_ = value;
-		}
-
 		virtual typename BaseType::CopyType GetValue_() const override{
 			return value_;
 		}
@@ -164,6 +207,10 @@ namespace Win::Core::Property{
 			return value_;
 		}
 
+		virtual typename BaseType::PtrType GetPtr_() override{
+			return &value_;
+		}
+
 		const T &value_;
 	};
 
@@ -176,8 +223,11 @@ namespace Win::Core::Property{
 		using SetterType = std::function<void(typename BaseType::CopyType)>;
 		using GetterType = std::function<typename BaseType::CopyType()>;
 
-		External(const SetterType &setter, const GetterType &getter)
-			: setter_(setter), getter_(getter){}
+		using RefGetterType = std::function<T &()>;
+		using PtrGetterType = std::function<typename BaseType::PtrType()>;
+
+		External(const SetterType &setter, const GetterType &getter, const PtrGetterType &ptrGetter = nullptr, const RefGetterType &refGetter = nullptr)
+			: setter_(setter), getter_(getter), ptrGetter_(ptrGetter), refGetter_(refGetter){}
 
 	protected:
 		virtual void SetValue_(typename BaseType::CopyType value) override{
@@ -193,7 +243,21 @@ namespace Win::Core::Property{
 			return getter_();
 		}
 
+		virtual T &GetValue_() override{
+			if (!refGetter_)
+				throw Exception::ReadOnly();
+			return refGetter_();
+		}
+
+		virtual typename BaseType::PtrType GetPtr_() override{
+			if (!ptrGetter_)
+				throw Exception::ReadOnly();
+			return ptrGetter_();
+		}
+
 		SetterType setter_;
 		GetterType getter_;
+		PtrGetterType ptrGetter_;
+		RefGetterType refGetter_;
 	};
 }
