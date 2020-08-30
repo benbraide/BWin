@@ -46,20 +46,33 @@ namespace Win::Thread{
 		}
 
 		Queue &operator -=(IdType id){
-			std::lock_guard<std::mutex> guard(lock_);
-			if (callbacks_.empty())
-				throw Exception::InvalidId();
+			IdType foundId = 0;
+			CallbackType foundCallback;
 
-			for (auto it = callbacks_.begin(); it != callbacks_.end(); ++it){
-				if (it->first == id){
-					callbacks_.erase(it);
-					if (eventCallback_ != nullptr)
-						eventCallback_(Event::Remove);
-					return *this;
+			{//Scoped
+				std::lock_guard<std::mutex> guard(lock_);
+				if (callbacks_.empty())
+					throw Exception::InvalidId();
+
+				for (auto it = callbacks_.begin(); it != callbacks_.end(); ++it){
+					if (it->first == id){
+						foundId = id;
+						foundCallback = it->second;
+
+						callbacks_.erase(it);
+						break;
+					}
 				}
 			}
 
-			throw Exception::InvalidId();
+			if (foundId == 0 || !foundCallback)
+				throw Exception::InvalidId();
+
+			foundCallback(foundId);//Signal removal
+			if (eventCallback_ != nullptr)
+				eventCallback_(Event::Remove);
+
+			return *this;
 		}
 
 	protected:

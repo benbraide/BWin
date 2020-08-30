@@ -82,15 +82,32 @@ namespace Win::Core::Property::Untyped{
 	protected:
 		template <typename T>
 		HandlerType GetHandler_() const{
-			for (auto handler : handlers_){
-				if (dynamic_cast<TypedHandler<std::remove_reference_t<T>> *>(handler.get()) != nullptr)
-					return handler;
+			for (auto it = handlers_.rbegin(); it != handlers_.rend(); ++it){
+				if (dynamic_cast<TypedHandler<std::remove_reference_t<T>> *>(it->get()) != nullptr)
+					return *it;
 			}
 
 			throw Exception::UnsupportedType();
 		}
 
 		HandlerListType handlers_;
+	};
+
+	template <class OwnerT>
+	class Owned : public Container{
+	public:
+		using OwnerType = OwnerT;
+
+		using Container::Container;
+		using Container::operator =;
+
+	protected:
+		friend OwnerT;
+
+		template <typename T>
+		void AddHandler_(const typename TypedHandler<T>::SetterType &setter, const typename TypedHandler<T>::GetterType &getter){
+			handlers_.push_back(std::make_shared<TypedHandler<T>>(setter, getter));
+		}
 	};
 
 	template <class FirstT, class... RestT>

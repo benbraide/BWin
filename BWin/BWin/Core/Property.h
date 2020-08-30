@@ -33,8 +33,10 @@ namespace Win::Core::Property{
 	public:
 		using ValueType = T;
 		using PtrType = std::remove_reference_t<T> *;
-		using RefType = std::conditional_t<(!std::is_scalar_v<T> && (std::is_const_v<T> || !std::is_reference_v<T>)), T &, std::remove_reference_t<T> *>;
-		using CopyType = typename Traits::Copy<T>::Type;
+		using RefType = std::conditional_t<!std::is_scalar_v<T>, T &, std::remove_reference_t<T> *>;
+
+		using ReturnType = typename Traits::Copy<T>::Type;
+		using CopyType = typename Traits::Copy<std::remove_reference_t<T>>::Type;
 
 		template <bool IsRef>
 		struct Ref_{
@@ -65,7 +67,7 @@ namespace Win::Core::Property{
 		}
 
 		operator RefType(){
-			return Ref_<(!std::is_scalar_v<T> && (std::is_const_v<T> || !std::is_reference_v<T>))>::template Get(*this);
+			return Ref_<!std::is_scalar_v<T>>::template Get(*this);
 		}
 
 		PtrType operator ->(){
@@ -115,7 +117,7 @@ namespace Win::Core::Property{
 			Copy_<std::is_copy_assignable_v<T>>::template Do(*this, value);
 		}
 
-		virtual CopyType GetValue_() const{
+		virtual ReturnType GetValue_() const{
 			throw Exception::WriteOnly();
 		}
 
@@ -140,7 +142,7 @@ namespace Win::Core::Property{
 		using BaseType::operator =;
 
 	protected:
-		virtual typename BaseType::CopyType GetValue_() const override{
+		virtual typename BaseType::ReturnType GetValue_() const override{
 			return value_;
 		}
 
@@ -152,37 +154,37 @@ namespace Win::Core::Property{
 	};
 
 	template <class T, template<class> class BaseT>
-	class Value<const T, BaseT> : public BaseT<T>{
+	class Value<const T, BaseT> : public BaseT<const T>{
 	public:
-		using BaseType = BaseT<T>;
+		using BaseType = BaseT<const T>;
 		using BaseType::operator =;
 
 		explicit Value(const T &value)
 			: value_(value){}
 
 	protected:
-		virtual typename BaseType::CopyType GetValue_() const override{
+		virtual typename BaseType::ReturnType GetValue_() const override{
 			return value_;
+		}
+
+		virtual typename BaseType::PtrType GetPtr_(){
+			return &value_;
 		}
 
 		const T value_;
 	};
 
-	template <class T, template<class> class BaseT = Object>
-	class Reference : public BaseT<T>{
+	template <class T, template<class> class BaseT>
+	class Value<T &, BaseT> : public BaseT<T &>{
 	public:
-		using BaseType = BaseT<T>;
+		using BaseType = BaseT<T &>;
 		using BaseType::operator =;
 
-		explicit Reference(T &value)
+		explicit Value(T &value)
 			: value_(value){}
 
 	protected:
-		virtual void SetValue_(typename BaseType::CopyType value) override{
-			value_ = value;
-		}
-
-		virtual typename BaseType::CopyType GetValue_() const override{
+		virtual typename BaseType::ReturnType GetValue_() const override{
 			return value_;
 		}
 
@@ -194,24 +196,42 @@ namespace Win::Core::Property{
 	};
 
 	template <class T, template<class> class BaseT>
-	class Reference<const T, BaseT> : public BaseT<T>{
+	class Value<const T &, BaseT> : public BaseT<const T &>{
 	public:
-		using BaseType = BaseT<T>;
+		using BaseType = BaseT<const T &>;
 		using BaseType::operator =;
 
-		explicit Reference(const T &value)
+		explicit Value(const T &value)
 			: value_(value){}
 
 	protected:
-		virtual typename BaseType::CopyType GetValue_() const override{
+		virtual typename BaseType::ReturnType GetValue_() const override{
 			return value_;
 		}
 
-		virtual typename BaseType::PtrType GetPtr_() override{
+		virtual typename BaseType::PtrType GetPtr_(){
 			return &value_;
 		}
 
 		const T &value_;
+	};
+
+	template <class T, template<class> class BaseT = Object>
+	class Reference : public Value<T &, BaseT>{
+	public:
+		using BaseType = Value<T &, BaseT>;
+
+		using BaseType::BaseType;
+		using BaseType::operator =;
+	};
+
+	template <class T, template<class> class BaseT>
+	class Reference<const T, BaseT> : public Value<const T &, BaseT>{
+	public:
+		using BaseType = Value<const T &, BaseT>;
+
+		using BaseType::BaseType;
+		using BaseType::operator =;
 	};
 
 	template <class T, template<class> class BaseT = Object>
@@ -221,7 +241,7 @@ namespace Win::Core::Property{
 		using BaseType::operator =;
 
 		using SetterType = std::function<void(typename BaseType::CopyType)>;
-		using GetterType = std::function<typename BaseType::CopyType()>;
+		using GetterType = std::function<typename BaseType::ReturnType()>;
 
 		using RefGetterType = std::function<T &()>;
 		using PtrGetterType = std::function<typename BaseType::PtrType()>;
@@ -237,7 +257,7 @@ namespace Win::Core::Property{
 				throw Exception::ReadOnly();
 		}
 
-		virtual typename BaseType::CopyType GetValue_() const override{
+		virtual typename BaseType::ReturnType GetValue_() const override{
 			if (!getter_)
 				throw Exception::WriteOnly();
 			return getter_();

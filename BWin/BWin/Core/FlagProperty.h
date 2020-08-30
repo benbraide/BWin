@@ -261,9 +261,9 @@ namespace Win::Core::Property{
 		using BaseType = Flag::Integral<T>;
 		using BaseType::operator =;
 
-		using SetterType = std::function<void(typename T)>;
-		using GetterType = std::function<typename T()>;
-		using QueryType = std::function<bool(T, bool)>;
+		using SetterType = std::function<void(typename BaseType::CopyType)>;
+		using GetterType = std::function<typename BaseType::CopyType()>;
+		using QueryType = std::function<bool(typename BaseType::CopyType, bool)>;
 
 		explicit External(const SetterType &setter, const GetterType &getter, const QueryType &query)
 			: setter_(setter), getter_(getter), query_(query){}
