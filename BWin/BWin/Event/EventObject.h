@@ -8,19 +8,9 @@
 namespace Win::Event{
 	class Object : public Thread::Context{
 	public:
-		using StateValueType = unsigned __int32;
 		using StatesPropertyType = Core::Property::External<StateValueType, Core::Property::Flag::Integral>;
 		using ResultPropertyType = Core::Property::Untyped::Owned<Object>;
 		using TargetPropertyType = Core::Property::Value<Event::Target &>;
-
-		struct State{
-			static constexpr StateValueType StopPropagation			= (1u << 0x0000);
-			static constexpr StateValueType PreventDefualt			= (1u << 0x0001);
-			static constexpr StateValueType DoingDefault			= (1u << 0x0002);
-			static constexpr StateValueType DoneDefault				= (1u << 0x0003);
-			static constexpr StateValueType CallingHandler			= (1u << 0x0004);
-			static constexpr StateValueType CalledHandler			= (1u << 0x0005);
-		};
 
 		explicit Object(Event::Target &target);
 
@@ -35,6 +25,8 @@ namespace Win::Event{
 		virtual void DoDefault();
 
 	protected:
+		virtual LRESULT InterpretBooleanResult_(bool value) const;
+
 		virtual void StateChanged_(StateValueType changes);
 
 		virtual void DoDefault_();
@@ -55,6 +47,7 @@ namespace Win::Event{
 			return [&](T value){
 				self.CheckContext_();
 				self.result_ = (LRESULT)value;
+				self.states_ |= State::ValueSet;
 			};
 		}
 
@@ -77,5 +70,21 @@ namespace Win::Event{
 
 		StateValueType states_ = 0u;
 		LRESULT result_ = 0u;
+	};
+
+	template <class T>
+	class TypedObject : public Object{
+	public:
+		using Object::Object;
+
+	protected:
+		virtual void DoDefault_() override{
+			Context->Events.DispatchDefault(dynamic_cast<T &>(*this));
+		}
+	};
+
+	class DefaultObject : public Object{
+	public:
+		using Object::Object;
 	};
 }

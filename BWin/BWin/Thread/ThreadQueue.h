@@ -177,10 +177,14 @@ namespace Win::Thread{
 		}
 
 		IdType operator +=(const CallbackType &callback){
-			return queue_ += [=](IdType id){
+			auto id = queue_ += [=](IdType id){
 				Remove_(id);
 				callback(id);
 			};
+
+			ids_.push_back(id);
+
+			return id;
 		}
 		
 		IdType operator +=(const std::function<void()> &callback){

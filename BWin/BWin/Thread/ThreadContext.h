@@ -13,6 +13,12 @@ namespace Win::Thread{
 			OutsideContext()
 				: Base("Specified operation must be performed inside the object's thread context."){}
 		};
+
+		class AbortedOnReference : public Core::Exception::Base{
+		public:
+			AbortedOnReference()
+				: Base("A synchronization request was aborted on a reference return type."){}
+		};
 	}
 
 	class Context{
@@ -30,6 +36,17 @@ namespace Win::Thread{
 			}
 		};
 
+		template <class T>
+		struct Promise<T &>{
+			static void Set(std::promise<T *> &target, const std::function<T &()> &valueCallback){
+				target.set_value(&valueCallback());
+			}
+
+			static void Set(std::promise<T *> &target){
+				target.set_value(nullptr);
+			}
+		};
+
 		template <>
 		struct Promise<void>{
 			static void Set(std::promise<void> &target, const std::function<void()> &valueCallback){
@@ -39,6 +56,23 @@ namespace Win::Thread{
 
 			static void Set(std::promise<void> &target){
 				target.set_value();
+			}
+		};
+
+		template <class T>
+		struct PromiseValue{
+			static T Get(std::promise<T> &target){
+				return target.get_future().get();
+			}
+		};
+
+		template <class T>
+		struct PromiseValue<T &>{
+			static T &Get(std::promise<T *> &target){
+				auto ptrValue = target.get_future().get();
+				if (ptrValue == nullptr)
+					throw Exception::AbortedOnReference();
+				return *ptrValue;
 			}
 		};
 
@@ -53,21 +87,22 @@ namespace Win::Thread{
 		ProxyQueue LowPriorityQueue{ GetQueueAddCallback_(*this, true), GetQueueRemoveCallback_(*this, true) };
 
 		template <typename CallbackT>
-		auto Use(const CallbackT &callback) -> typename Core::Traits::Functor<CallbackT>::ReturnType{
+		auto Use(const CallbackT &callback) const -> typename Core::Traits::Functor<CallbackT>::ReturnType{
 			using ReturnT = typename Core::Traits::Functor<CallbackT>::ReturnType;
+			using BaseReturnT = std::remove_reference_t<ReturnT>;
 
 			if (thread_.IsContext)//Already inside thread context
 				return callback();
 
-			std::promise<ReturnT> promise;
+			std::promise<std::conditional_t<std::is_reference_v<ReturnT>, BaseReturnT *, BaseReturnT>> promise;
 			queueScope_ += [&](Queue::IdType id){
 				if (id == 0u)
-					Promise<ReturnT>::Set(promise, callback);
+					Promise<ReturnT>::template Set(promise, callback);
 				else//Callback is being removed from queue
-					Promise<ReturnT>::Set(promise);
+					Promise<ReturnT>::template Set(promise);
 			};
 
-			return promise.get_future().get();
+			return PromiseValue<ReturnT>::template Get(promise);
 		}
 
 	protected:
@@ -80,7 +115,7 @@ namespace Win::Thread{
 		static ProxyQueue::RemoveCallbackType GetQueueRemoveCallback_(Context &self, bool isLowPriority);
 
 		Object &thread_;
-		QueueScope queueScope_;
+		mutable QueueScope queueScope_;
 		QueueScope lowPriorityQueueScope_;
 	};
 }

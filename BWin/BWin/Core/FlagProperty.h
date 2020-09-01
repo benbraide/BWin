@@ -143,6 +143,10 @@ namespace Win::Core::Property::Flag{
 			return (*this -= static_cast<unsigned __int64>(value));
 		}
 
+		operator T() const{
+			return this->GetValue_();
+		}
+
 		operator bool() const{
 			return (this->GetValue_() != static_cast<T>(0));
 		}

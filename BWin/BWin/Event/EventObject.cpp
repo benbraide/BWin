@@ -25,6 +25,7 @@ Win::Event::Object::Object(Event::Target &context, Event::Target &target)
 
 void Win::Event::Object::DoDefault(){
 	CheckContext_();
+
 	if ((states_ & (State::PreventDefualt | State::DoneDefault)) != 0u)
 		return;//Done or prevented
 
@@ -46,6 +47,10 @@ void Win::Event::Object::DoDefault(){
 	}
 }
 
+LRESULT Win::Event::Object::InterpretBooleanResult_(bool value) const{
+	return (value ? TRUE : FALSE);
+}
+
 void Win::Event::Object::StateChanged_(StateValueType changes){}
 
 void Win::Event::Object::DoDefault_(){}
@@ -55,25 +60,28 @@ void Win::Event::Object::CallDefaultHandler_(){}
 Win::Event::Object::StatesPropertyType::SetterType Win::Event::Object::GetStatesSetter_(Object &self){
 	return [&](StateValueType value){
 		self.CheckContext_();
-		if ((value & (State::StopPropagation | State::PreventDefualt)) == 0u || value == self.states_)
+		if ((value & (State::StopPropagation | State::PreventDefualt | State::StopListening)) == 0u)
 			return;//No allowed state specified
 
-		self.states_ |= (value & (State::StopPropagation | State::PreventDefualt));
-		self.StateChanged_(value & (State::StopPropagation | State::PreventDefualt));
+		self.states_ &= ~(State::StopPropagation | State::PreventDefualt | State::StopListening);//Remove previous
+		self.states_ |= (value & (State::StopPropagation | State::PreventDefualt | State::StopListening));//Set applicable
+
+		self.StateChanged_(value & (State::StopPropagation | State::PreventDefualt));//Alert
 	};
 }
 
 Win::Event::Object::StatesPropertyType::GetterType Win::Event::Object::GetStatesGetter_(Object &self){
 	return [&]{
 		self.CheckContext_();
-		return self.states_;
+		return (self.states_ & (State::StopPropagation | State::PreventDefualt | State::ValueSet | State::StopListening));
 	};
 }
 
 typename Win::Core::Property::Untyped::TypedHandler<bool>::SetterType Win::Event::Object::GetBooleanResultSetter_(Object &self){
 	return [&](bool value){
 		self.CheckContext_();
-		self.result_ = (value ? TRUE : FALSE);
+		self.result_ = self.InterpretBooleanResult_(value);
+		self.states_ |= State::ValueSet;
 	};
 }
 
