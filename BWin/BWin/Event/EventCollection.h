@@ -191,7 +191,7 @@ namespace Win::Event{
 		template <typename ObjectT>
 		void DispatchDefault(ObjectT &object) const{
 			Use([&]{
-				auto bucket = GetBucket_<ObjectT>()->Call(object, true);
+				GetBucket_<ObjectT>()->Call(object, true);
 			});
 		}
 

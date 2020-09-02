@@ -10,7 +10,7 @@ namespace Win::Event{
 	public:
 		using StatesPropertyType = Core::Property::External<StateValueType, Core::Property::Flag::Integral>;
 		using ResultPropertyType = Core::Property::Untyped::Owned<Object>;
-		using TargetPropertyType = Core::Property::Value<Event::Target &>;
+		using TargetPropertyType = Core::Property::External<Event::Target &>;
 
 		explicit Object(Event::Target &target);
 
@@ -19,8 +19,8 @@ namespace Win::Event{
 		StatesPropertyType States{ GetStatesSetter_(*this), GetStatesGetter_(*this), nullptr };
 		ResultPropertyType Result{ ResultPropertyType::HandlerListType() };
 
-		TargetPropertyType Context;
-		TargetPropertyType Target;
+		TargetPropertyType Context{ nullptr, GetTargetGetter_(*this, true) };
+		TargetPropertyType Target{ nullptr, GetTargetGetter_(*this, false) };
 
 		virtual void DoDefault();
 
@@ -38,6 +38,14 @@ namespace Win::Event{
 			Result.AddHandler_<T>(setter, getter);
 		}
 
+		template <typename T>
+		void SetResult_(T value){
+			result_ = (LRESULT)value;
+			states_ |= State::ValueSet;
+		}
+
+		static TargetPropertyType::GetterType GetTargetGetter_(Object &self, bool isContext);
+
 		static StatesPropertyType::SetterType GetStatesSetter_(Object &self);
 
 		static StatesPropertyType::GetterType GetStatesGetter_(Object &self);
@@ -46,8 +54,7 @@ namespace Win::Event{
 		static typename Core::Property::Untyped::TypedHandler<T>::SetterType GetResultSetter_(Object &self){
 			return [&](T value){
 				self.CheckContext_();
-				self.result_ = (LRESULT)value;
-				self.states_ |= State::ValueSet;
+				self.SetResult_(value);
 			};
 		}
 
@@ -67,6 +74,9 @@ namespace Win::Event{
 		static void AddDefaultResultHandler_(Object &self){
 			self.Result.AddHandler_<T>(GetResultSetter_<T>(self), GetResultGetter_<T>(self));
 		}
+
+		Event::Target &context_;
+		Event::Target &target_;
 
 		StateValueType states_ = 0u;
 		LRESULT result_ = 0u;

@@ -4,7 +4,7 @@ Win::Event::Object::Object(Event::Target &target)
 	: Object(target, target){}
 
 Win::Event::Object::Object(Event::Target &context, Event::Target &target)
-	: Context(context), Target(target){
+	: context_(context), target_(target){
 	AddDefaultResultHandler_<LRESULT>(*this);
 
 	AddDefaultResultHandler_<__int16>(*this);
@@ -57,6 +57,13 @@ void Win::Event::Object::DoDefault_(){}
 
 void Win::Event::Object::CallDefaultHandler_(){}
 
+Win::Event::Object::TargetPropertyType::GetterType Win::Event::Object::GetTargetGetter_(Object &self, bool isContext){
+	return [&]() -> TargetPropertyType::ReturnType{
+		self.CheckContext_();
+		return (isContext ? self.context_ : self.target_);
+	};
+}
+
 Win::Event::Object::StatesPropertyType::SetterType Win::Event::Object::GetStatesSetter_(Object &self){
 	return [&](StateValueType value){
 		self.CheckContext_();
@@ -80,8 +87,7 @@ Win::Event::Object::StatesPropertyType::GetterType Win::Event::Object::GetStates
 typename Win::Core::Property::Untyped::TypedHandler<bool>::SetterType Win::Event::Object::GetBooleanResultSetter_(Object &self){
 	return [&](bool value){
 		self.CheckContext_();
-		self.result_ = self.InterpretBooleanResult_(value);
-		self.states_ |= State::ValueSet;
+		self.SetResult_(self.InterpretBooleanResult_(value));
 	};
 }
 
