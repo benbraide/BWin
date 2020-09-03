@@ -3,10 +3,10 @@
 #include "ThreadContext.h"
 
 Win::Thread::Context::Context()
-	: Context(App::Thread){}
+	: Context(App::Thread.Ref){}
 
 Win::Thread::Context::Context(Object &thread)
-	: thread_(thread), queueScope_(thread.Queue), lowPriorityQueueScope_(thread.LowPriorityQueue){}
+	: thread_(thread), queueScope_(thread.Queue.Ref), lowPriorityQueueScope_(thread.LowPriorityQueue.Ref){}
 
 Win::Thread::Context::~Context() = default;
 

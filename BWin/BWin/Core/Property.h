@@ -38,7 +38,7 @@ namespace Win::Core::Property{
 		using ReturnType = typename Traits::Copy<T>::Type;
 		using CopyType = typename Traits::Copy<std::remove_reference_t<T>>::Type;
 
-		template <bool IsRef>
+		/*template <bool IsRef>
 		struct Ref_{
 			static T &Get(Container &self){
 				return self.GetValue_();
@@ -50,6 +50,19 @@ namespace Win::Core::Property{
 			static std::remove_reference_t<T> *Get(Container &self){
 				return &self.GetValue_();
 			}
+		};*/
+
+		class Ref_{
+		public:
+			explicit Ref_(Container &container)
+				: container_(container){}
+
+			operator T &(){
+				return container_.GetValue_();
+			}
+
+		private:
+			Container &container_;
 		};
 
 		Container &operator =(CopyType value){
@@ -66,9 +79,9 @@ namespace Win::Core::Property{
 			return GetValue_();
 		}
 
-		operator RefType(){
+		/*operator RefType(){
 			return Ref_<!std::is_scalar_v<T>>::template Get(*this);
-		}
+		}*/
 
 		PtrType operator ->(){
 			return GetPtr_();
@@ -97,6 +110,8 @@ namespace Win::Core::Property{
 		friend bool operator !=(CopyType left, const Container &right){
 			return (left != right.GetValue_());
 		}
+
+		Ref_ Ref{ *this };
 
 	protected:
 		template <bool IsCopyAssignable>

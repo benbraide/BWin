@@ -46,6 +46,10 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR cmd_line, int cmd_sh
 	lp += 9;
 	lp += 8.1;
 
+	for (auto itc : lp){
+		itc += 9;
+	}
+
 	int lpl = lp.Length;
 	lp.Length = 9;
 	lpl = lp.Length;
@@ -73,7 +77,7 @@ int APIENTRY wWinMain(HINSTANCE instance, HINSTANCE, LPWSTR cmd_line, int cmd_sh
 	tq -= id;
 	//tq -= ip;
 
-	Win::Thread::Queue &qn = Win::App::Thread->Queue;
+	Win::Thread::Queue &qn = Win::App::Thread->Queue.Ref;
 	Win::App::Thread->Queue += []{};
 
 	return 0;

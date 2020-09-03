@@ -11,6 +11,8 @@ namespace Win::Event{
 		using BucketType = CollectionType::BucketType;
 		using IdType = CollectionType::IdType;
 
+		virtual ~Target() = default;
+
 		CollectionType Events;
 
 	protected:

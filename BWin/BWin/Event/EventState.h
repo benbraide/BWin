@@ -5,7 +5,7 @@ namespace Win::Event{
 
 	struct State{
 		static constexpr StateValueType StopPropagation		= (1u << 0x0000);
-		static constexpr StateValueType PreventDefualt		= (1u << 0x0001);
+		static constexpr StateValueType PreventDefault		= (1u << 0x0001);
 		static constexpr StateValueType DoingDefault		= (1u << 0x0002);
 		static constexpr StateValueType DoneDefault			= (1u << 0x0003);
 		static constexpr StateValueType CallingHandler		= (1u << 0x0004);

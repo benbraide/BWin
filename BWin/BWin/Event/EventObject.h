@@ -97,4 +97,59 @@ namespace Win::Event{
 	public:
 		using Object::Object;
 	};
+
+	template <class BaseT, class ValueT>
+	class SingleValueObject : public BaseT{
+	public:
+		using BaseType = BaseT;
+		using ValueType = ValueT;
+		using ValuePropertyType = Core::Property::External<ValueT>;
+
+		using BaseType::BaseType;
+
+		template <typename... ArgTypes>
+		explicit SingleValueObject(typename Core::Traits::Copy<ValueT>::Type value, ArgTypes &&... args)
+			: BaseType(std::forward<ArgTypes>(args)...), value_(value){}
+
+		virtual ~SingleValueObject() = default;
+
+	protected:
+		typename ValuePropertyType::GetterType GetValueGetter_(){
+			return [&]() -> typename ValuePropertyType::ReturnType{
+				this->CheckContext_();
+				return value_;
+			};
+		}
+
+		ValueT value_;
+	};
+
+	template <class BaseT, class ValueT, class SecondValueT = ValueT>
+	class DoubleValueObject : public SingleValueObject<BaseT, ValueT>{
+	public:
+		using BaseType = SingleValueObject<BaseT, ValueT>;
+		using ValueType = typename BaseType::ValueType;
+		using SecondValueType = SecondValueT;
+
+		using ValuePropertyType = typename BaseType::ValuePropertyType;
+		using SecondValuePropertyType = Core::Property::External<SecondValueT>;
+
+		using BaseType::BaseType;
+
+		template <typename... ArgTypes>
+		explicit DoubleValueObject(typename Core::Traits::Copy<ValueT>::Type value, typename Core::Traits::Copy<SecondValueT>::Type secondValue, ArgTypes &&... args)
+			: BaseType(value, std::forward<ArgTypes>(args)...), secondValue_(secondValue){}
+
+		virtual ~DoubleValueObject() = default;
+
+	protected:
+		typename SecondValuePropertyType::GetterType GetSecondValueGetter_(){
+			return [&]() -> typename SecondValuePropertyType::ReturnType{
+				this->CheckContext_();
+				return secondValue_;
+			};
+		}
+
+		SecondValueT secondValue_;
+	};
 }

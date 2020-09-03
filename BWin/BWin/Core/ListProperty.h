@@ -11,18 +11,25 @@ namespace Win::Core::Property{
 			InvalidIndex()
 				: Base("Invalid index: Cannot access element at specified index."){}
 		};
+
+		class TypeMismatch : public Base{
+		public:
+			TypeMismatch()
+				: Base("Cannot perform specified action because item types don't match."){}
+		};
 	}
 }
 
 namespace Win::Core::Property::List{
-	template <class T>
+	template <class T, class ItemReturnT = typename T::value_type>
 	class Generic : public Container<T>{
 	public:
 		using SizeType = typename T::size_type;
 		using ItemType = typename T::value_type;
+		using ItemReturnType = ItemReturnT;
 
-		using ItemPropertyType = Property::External<ItemType>;
-		using ItemInfoPropertyType = Property::External<std::pair<SizeType, ItemType>>;
+		using ItemPropertyType = Property::External<ItemReturnT>;
+		using ItemInfoPropertyType = Property::External<std::pair<SizeType, ItemReturnT>>;
 
 		using LengthPropertyType = Property::External<SizeType>;
 		using BooleanPropertyType = Property::External<bool>;
@@ -51,17 +58,17 @@ namespace Win::Core::Property::List{
 
 		Generic &operator =(typename Container<T>::CopyType) = delete;
 
-		Generic &operator +=(typename Container<ItemType>::CopyType value){
+		Generic &operator +=(typename Traits::Copy<ItemReturnType>::Type value){
 			Insert_(value);
 			return *this;
 		}
 
-		Generic &operator -=(typename Container<ItemType>::CopyType value){
+		Generic &operator -=(typename Traits::Copy<ItemReturnType>::Type value){
 			Remove_(value);
 			return *this;
 		}
 
-		typename ItemType operator [](SizeType index) const{
+		typename ItemReturnType operator [](SizeType index) const{
 			return GetItemAt_(index);
 		}
 
@@ -86,25 +93,83 @@ namespace Win::Core::Property::List{
 		ItemInfoPropertyType Item;
 
 	protected:
-		virtual void Insert_(typename Container<ItemType>::CopyType value){
-			this->GetValue_().push_back(value);
+		template <bool IsSame>
+		struct Helper_{
+			static void Insert(Generic &self, typename Traits::Copy<ItemReturnType>::Type value){
+				self.GetValue_().push_back(value);
+			}
+
+			static void Remove(Generic &self, typename Traits::Copy<ItemReturnType>::Type value){
+				auto callback = [&]{//Suppress [[nodiscard]] attribute warning
+					return std::remove(self.GetBegin_(), self.GetEnd_(), value);
+				};
+				callback();
+			}
+
+			static void Update(Generic &self, SizeType index, typename Traits::Copy<ItemReturnType>::Type value){
+				*std::next(self.GetBegin_(), static_cast<typename IteratorPropertyType::ValueType::difference_type>(index)) = value;
+			}
+
+			static ItemReturnType GetItemAt(const Generic &self, SizeType index){
+				if (index < self.GetLength_())
+					return *std::next(self.GetCBegin_(), index);
+				throw Exception::InvalidIndex();
+			}
+
+			static ItemReturnType GetFirst(const Generic &self){
+				if (self.GetLength_() == 0u)
+					throw Exception::InvalidIndex();
+				return *self.GetCBegin_();
+			}
+
+			static ItemReturnType GetLast(const Generic &self){
+				if (self.GetLength_() == 0u)
+					throw Exception::InvalidIndex();
+				return *self.GetCReverseBegin_();
+			}
+		};
+
+		template <>
+		struct Helper_<false>{
+			static void Insert(Generic &self, typename Traits::Copy<ItemReturnType>::Type value){
+				throw Exception::TypeMismatch();
+			}
+
+			static void Remove(Generic &self, typename Traits::Copy<ItemReturnType>::Type value){
+				throw Exception::TypeMismatch();
+			}
+
+			static void Update(Generic &self, SizeType index, typename Traits::Copy<ItemReturnType>::Type value){
+				throw Exception::TypeMismatch();
+			}
+
+			static ItemReturnType GetItemAt(const Generic &self, SizeType index){
+				throw Exception::TypeMismatch();
+			}
+
+			static ItemReturnType GetFirst(const Generic &self){
+				throw Exception::TypeMismatch();
+			}
+
+			static ItemReturnType GetLast(const Generic &self){
+				throw Exception::TypeMismatch();
+			}
+		};
+
+		virtual void Insert_(typename Traits::Copy<ItemReturnType>::Type value){
+			Helper_<std::is_same_v<ItemType, ItemReturnType>>::template Insert(*this, value);
 		}
 
-		virtual void Remove_(typename Container<ItemType>::CopyType value){
-			auto callback = [&]{
-				return std::remove(GetBegin_(), GetEnd_(), value);
-			};
-			callback();
+		virtual void Remove_(typename Traits::Copy<ItemReturnType>::Type value){
+			Helper_<std::is_same_v<ItemType, ItemReturnType>>::template Remove(*this, value);
 		}
 
-		virtual void Update_(SizeType index, typename Container<ItemType>::CopyType value){
-			*std::next(GetBegin_(), static_cast<typename IteratorPropertyType::ValueType::difference_type>(index)) = value;
+		virtual void Update_(SizeType index, typename Traits::Copy<ItemReturnType>::Type value){
+			Helper_<std::is_same_v<ItemType, ItemReturnType>>::template Update(*this, index, value);
 		}
 
-		virtual ItemType GetItemAt_(SizeType index) const{
-			if (index < GetLength_())
-				return *std::next(GetCBegin_(), index);
-			throw Exception::InvalidIndex();
+		virtual ItemReturnType GetItemAt_(SizeType index) const{
+			return Helper_<std::is_same_v<ItemType, ItemReturnType>>::template GetItemAt(*this, index);
 		}
 
 		virtual void SetLength_(SizeType value){
@@ -147,30 +212,26 @@ namespace Win::Core::Property::List{
 			return (criter_ = this->GetValue_().crend());
 		}
 
-		virtual void SetFirst_(typename Container<ItemType>::CopyType value){
+		virtual void SetFirst_(typename Traits::Copy<ItemReturnType>::Type value){
 			if (GetLength_() == 0u)
 				Insert_(value);
 			else
 				Update_(0, value);
 		}
 
-		virtual ItemType GetFirst_() const{
-			if (GetLength_() == 0u)
-				throw Exception::InvalidIndex();
-			return *GetCBegin_();
+		virtual ItemReturnType GetFirst_() const{
+			return Helper_<std::is_same_v<ItemType, ItemReturnType>>::template GetFirst(*this);
 		}
 
-		virtual void SetLast_(typename Container<ItemType>::CopyType value){
+		virtual void SetLast_(typename Traits::Copy<ItemReturnType>::Type value){
 			if (auto length = GetLength_(); length == 0u)
 				Insert_(value);
 			else
 				Update_((length - 1), value);
 		}
 
-		virtual ItemType GetLast_() const{
-			if (GetLength_() == 0u)
-				throw Exception::InvalidIndex();
-			return *GetCReverseBegin_();
+		virtual ItemReturnType GetLast_() const{
+			return Helper_<std::is_same_v<ItemType, ItemReturnType>>::template GetLast(*this);
 		}
 
 		virtual void SetItemInfo_(typename ItemInfoPropertyType::CopyType value){
@@ -250,7 +311,7 @@ namespace Win::Core::Property::List{
 		}
 
 		static typename ItemPropertyType::SetterType GetFirstSetter_(Generic &self){
-			return [&](typename Container<ItemType>::CopyType value){
+			return [&](typename ItemPropertyType::CopyType value){
 				return self.SetFirst_(value);
 			};
 		}
@@ -262,7 +323,7 @@ namespace Win::Core::Property::List{
 		}
 
 		static typename ItemPropertyType::SetterType GetLastSetter_(Generic &self){
-			return [&](typename Container<ItemType>::CopyType value){
+			return [&](typename ItemPropertyType::CopyType value){
 				return self.SetLast_(value);
 			};
 		}
@@ -284,4 +345,14 @@ namespace Win::Core::Property::List{
 		mutable typename ReverseIteratorPropertyType::ValueType riter_;
 		mutable typename ConstantReverseIteratorPropertyType::ValueType criter_;
 	};
+
+	template <typename T>
+	auto begin(Generic<T> &list) -> typename Generic<T>::IteratorPropertyType::ValueType{
+		return static_cast<typename T::iterator>(list.Begin);
+	}
+
+	template <typename T>
+	auto end(Generic<T> &list) -> typename Generic<T>::IteratorPropertyType::ValueType{
+		return list.End;
+	}
 }

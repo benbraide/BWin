@@ -26,7 +26,7 @@ Win::Event::Object::Object(Event::Target &context, Event::Target &target)
 void Win::Event::Object::DoDefault(){
 	CheckContext_();
 
-	if ((states_ & (State::PreventDefualt | State::DoneDefault)) != 0u)
+	if ((states_ & (State::PreventDefault | State::DoneDefault)) != 0u)
 		return;//Done or prevented
 
 	if ((states_ & State::DoingDefault) == 0u){
@@ -67,20 +67,20 @@ Win::Event::Object::TargetPropertyType::GetterType Win::Event::Object::GetTarget
 Win::Event::Object::StatesPropertyType::SetterType Win::Event::Object::GetStatesSetter_(Object &self){
 	return [&](StateValueType value){
 		self.CheckContext_();
-		if ((value & (State::StopPropagation | State::PreventDefualt | State::StopListening)) == 0u)
+		if ((value & (State::StopPropagation | State::PreventDefault | State::StopListening)) == 0u)
 			return;//No allowed state specified
 
-		self.states_ &= ~(State::StopPropagation | State::PreventDefualt | State::StopListening);//Remove previous
-		self.states_ |= (value & (State::StopPropagation | State::PreventDefualt | State::StopListening));//Set applicable
+		self.states_ &= ~(State::StopPropagation | State::PreventDefault | State::StopListening);//Remove previous
+		self.states_ |= (value & (State::StopPropagation | State::PreventDefault | State::StopListening));//Set applicable
 
-		self.StateChanged_(value & (State::StopPropagation | State::PreventDefualt));//Alert
+		self.StateChanged_(value & (State::StopPropagation | State::PreventDefault));//Alert
 	};
 }
 
 Win::Event::Object::StatesPropertyType::GetterType Win::Event::Object::GetStatesGetter_(Object &self){
 	return [&]{
 		self.CheckContext_();
-		return (self.states_ & (State::StopPropagation | State::PreventDefualt | State::ValueSet | State::StopListening));
+		return (self.states_ & (State::StopPropagation | State::PreventDefault | State::ValueSet | State::StopListening));
 	};
 }
 

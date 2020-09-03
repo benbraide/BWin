@@ -180,8 +180,8 @@ namespace Win::Event{
 					if ((resultInfo.second & State::ValueSet) != 0)
 						object.Result = resultInfo.first;//Override result
 
-					if ((resultInfo.second & State::PreventDefualt) != 0)
-						object.States += State::PreventDefualt;//Forward default prevention
+					if ((resultInfo.second & State::PreventDefault) != 0)
+						object.States += State::PreventDefault;//Forward default prevention
 				}
 
 				object.DoDefault();
@@ -205,6 +205,16 @@ namespace Win::Event{
 			ObjectT object(owner_, std::forward<ArgsTypes>(args)...);
 			Dispatch(object);
 			return std::make_pair<ReturnT, StateValueType>(object.Result, object.States);
+		}
+
+		template <typename ObjectT, typename... ArgsTypes>
+		bool TriggerAndReportPreventDefault(ArgsTypes &&... args) const{
+			return ((TriggerAs<LRESULT, ObjectT>(args...).second & State::PreventDefault) != 0u);
+		}
+
+		template <typename ObjectT, typename ResultT, typename... ArgsTypes>
+		bool TriggerAndCompareResult(ResultT result, ArgsTypes &&... args) const{
+			return (TriggerAs<ResultT, ObjectT>(args...).first == result);
 		}
 
 	protected:
